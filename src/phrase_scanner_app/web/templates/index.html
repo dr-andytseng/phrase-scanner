@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Scan websites for keywords and phrases. Local, minimalist web UI for PhraseScanner.">
+  <title>PhraseScanner</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='88'>🔍</text></svg>">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+<header class="hero">
+  <div class="container">
+    <h1>PhraseScanner</h1>
+    <p class="tagline">Crawl a website and find where your keywords and phrases appear.</p>
+  </div>
+</header>
+
+<main class="container">
+
+  <section class="card" aria-labelledby="scan-heading">
+    <h2 id="scan-heading">New scan</h2>
+
+    <form id="scan-form" novalidate>
+      <div class="field-grid">
+        <div class="field">
+          <label for="urls">Websites to scan</label>
+          <textarea id="urls" name="urls" rows="6" required
+            aria-describedby="urls-hint"
+            placeholder="https://example.com&#10;https://blog.example.com"></textarea>
+          <p class="hint" id="urls-hint">One URL per line. The crawler follows internal links on the same domain only. Lines starting with # are ignored.</p>
+        </div>
+
+        <div class="field">
+          <label for="phrases">Phrases to find</label>
+          <textarea id="phrases" name="phrases" rows="6" required
+            aria-describedby="phrases-hint"
+            placeholder="privacy policy&#10;data breach&#10;free trial"></textarea>
+          <p class="hint" id="phrases-hint">One term per line. Single words or multi-word phrases. Lines starting with # are ignored.</p>
+        </div>
+      </div>
+
+      <details class="advanced">
+        <summary>Advanced limits</summary>
+        <div class="limits-grid">
+          <div class="field small">
+            <label for="delay">Delay between requests (s)</label>
+            <input type="number" id="delay" name="delay" value="0.5" min="0.2" max="10" step="0.1" inputmode="decimal">
+          </div>
+          <div class="field small">
+            <label for="max_pages">Max pages per site</label>
+            <input type="number" id="max_pages" name="max_pages" value="100" min="1" max="500" step="1" inputmode="numeric">
+          </div>
+          <div class="field small">
+            <label for="max_depth">Max crawl depth</label>
+            <input type="number" id="max_depth" name="max_depth" value="3" min="0" max="8" step="1" inputmode="numeric">
+          </div>
+        </div>
+        <p class="hint">Higher limits mean longer scans. Large crawls can take many minutes and may time out — keep limits modest on sites you don’t control. Depth and limits affect <em>coverage</em>, not certainty: deep pages may never be reached under the page cap — put specific must-check pages in the URL list above.</p>
+      </details>
+
+      <div class="form-actions">
+        <button type="submit" class="btn-primary" id="scan-btn">Scan now</button>
+        <p class="hint inline-hint">Only scan sites you own or have permission to crawl.</p>
+      </div>
+
+      <div class="status" id="status" role="status" aria-live="polite" hidden>
+        <div class="spinner" aria-hidden="true"></div>
+        <div>
+          <p class="status-title">Scanning…</p>
+          <p class="status-sub"><span id="elapsed">0</span>s elapsed. This runs synchronously — large sites can take a while.</p>
+        </div>
+        <button type="button" class="btn-stop" id="stop-btn">Stop</button>
+      </div>
+
+      <p class="form-error" id="form-error" role="alert" hidden></p>
+    </form>
+  </section>
+
+  <section class="results" id="results" hidden aria-labelledby="results-heading">
+    <div class="results-header">
+      <div>
+        <h2 id="results-heading">Results</h2>
+        <p class="hint" id="scan-meta"></p>
+        <p class="stopped-note" id="stopped-note" role="status" hidden>Scan stopped early — showing partial results collected so far.</p>
+      </div>
+      <div class="download-actions">
+        <button class="btn-secondary" id="download-csv" type="button">Download CSV</button>
+        <button class="btn-secondary" id="download-json" type="button">Download JSON</button>
+      </div>
+    </div>
+
+    <div class="stats-row" id="stats-row"></div>
+
+    <div class="card subtle" id="top-phrases-card" hidden>
+      <h3>Top phrases</h3>
+      <ol class="top-phrases" id="top-phrases"></ol>
+    </div>
+
+    <div class="table-wrap card" id="found-card">
+      <div class="table-toolbar">
+        <h3>Found <span class="count-pill" id="found-count">0</span></h3>
+        <label class="filter-label" for="found-filter">Filter
+          <input type="search" id="found-filter" class="table-filter" placeholder="URL or phrase…" aria-controls="found-table">
+        </label>
+      </div>
+      <p class="hint">Pages where at least one phrase was found.</p>
+      <table id="found-table">
+        <thead>
+          <tr>
+            <th scope="col"><button class="th-sort" data-table="found" data-key="URL" type="button">URL <span class="sort-ind"></span></button></th>
+            <th scope="col"><button class="th-sort" data-table="found" data-key="Phrases Found" type="button">Found <span class="sort-ind"></span></button></th>
+            <th scope="col"><button class="th-sort" data-table="found" data-key="Phrase Counts" type="button">Phrases <span class="sort-ind"></span></button></th>
+            <th scope="col"><button class="th-sort" data-table="found" data-key="Depth" type="button">Depth <span class="sort-ind"></span></button></th>
+            <th scope="col"><button class="th-sort" data-table="found" data-key="Status Code" type="button">Status <span class="sort-ind"></span></button></th>
+          </tr>
+        </thead>
+        <tbody id="found-body"></tbody>
+      </table>
+      <p class="hint" id="found-empty" hidden>No pages with matches.</p>
+    </div>
+
+    <div class="table-wrap card" id="scanned-card">
+      <div class="table-toolbar">
+        <h3>Scanned <span class="count-pill" id="scanned-count">0</span></h3>
+        <label class="filter-label" for="scanned-filter">Filter
+          <input type="search" id="scanned-filter" class="table-filter" placeholder="URL or phrase…" aria-controls="scanned-table">
+        </label>
+      </div>
+      <p class="hint">Pages that were scanned but contained no matching phrases (including pages that failed to load).</p>
+      <table id="scanned-table">
+        <thead>
+          <tr>
+            <th scope="col"><button class="th-sort" data-table="scanned" data-key="URL" type="button">URL <span class="sort-ind"></span></button></th>
+            <th scope="col"><button class="th-sort" data-table="scanned" data-key="Depth" type="button">Depth <span class="sort-ind"></span></button></th>
+            <th scope="col"><button class="th-sort" data-table="scanned" data-key="Status Code" type="button">Status <span class="sort-ind"></span></button></th>
+            <th scope="col"><button class="th-sort" data-table="scanned" data-key="Error" type="button">Error <span class="sort-ind"></span></button></th>
+          </tr>
+        </thead>
+        <tbody id="scanned-body"></tbody>
+      </table>
+      <p class="hint" id="scanned-empty" hidden>No pages without matches.</p>
+    </div>
+  </section>
+
+</main>
+
+<footer class="footer">
+  <div class="container">
+    <p>PhraseScanner · For local use only · Respects robots.txt and same-domain crawling</p>
+  </div>
+</footer>
+
+<script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>

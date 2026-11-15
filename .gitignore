@@ -1,9 +1,21 @@
+# Input files (private / local data)
 urls.txt
 phrases.txt
+
+# Generated results
 phrasescanner_results_CSV.csv
 phrasescanner_results_JSON.json
+
+# Python
 __pycache__/
 *.pyc
+*.egg-info/
+build/
+dist/
+
+# Environments
 .venv/
 venv/
+
+# OS/editor
 .DS_Store

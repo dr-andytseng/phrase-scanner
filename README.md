@@ -24,7 +24,7 @@ The project provides two equally supported interfaces, both built on the same sh
 
 ## Requirements
 
-- Python 3.9+ (tested on 3.9; there is no guarantee of compatibility with unverified versions)
+- Python 3.9+ (CI-free; verified locally on 3.9.6 and 3.15.2 — other versions are untested)
 - Dependencies are managed in `pyproject.toml`. Base dependencies (CLI only): requests, beautifulsoup4, lxml. The web interface additionally needs Flask (`.[web]` extra).
 - `requirements.txt` is kept as a compatibility entry point (`-e .`) — it installs the CLI and its dependencies, nothing more.
 
@@ -40,15 +40,15 @@ The project provides two equally supported interfaces, both built on the same sh
 
 CLI only:
 ```
-   python -m pip install -e .
+   python3 -m pip install -e .
 ```
 
 CLI plus the optional web interface:
 ```
-   python -m pip install -e ".[web]"
+   python3 -m pip install -e ".[web]"
 ```
 
-(Or, equivalent to the CLI-only install: `pip install -r requirements.txt`, which runs `-e .`.)
+(Or, equivalent to the CLI-only install: `python3 -m pip install -r requirements.txt`, which runs `-e .`.)
 
 3. (CLI only) Run the CLI once to auto-generate sample input files:
 ```
@@ -90,10 +90,10 @@ free trial
 
 Alternatively, without installing:
 ```
-   python phrase_scanner.py
+   python3 phrase_scanner.py
 ```
 
-The root-level `phrase_scanner.py` is a compatibility launcher that delegates to the packaged CLI. **It requires the project to be installed first** (`python -m pip install -e .` or `python -m pip install -e ".[web]"`); it is not a standalone script and does not duplicate scanner logic.
+The root-level `phrase_scanner.py` is a compatibility launcher that delegates to the packaged CLI. **It requires the project to be installed first** (`python3 -m pip install -e .` or `python3 -m pip install -e ".[web]"`); it is not a standalone script and does not duplicate scanner logic.
 
 The scanner will crawl each site, log progress in the terminal, and save results to:
 - phrasescanner_results_CSV.csv
@@ -106,18 +106,29 @@ Input files (urls.txt, phrases.txt) are read from the current working directory,
 The web interface is a local, single-user Flask UI around the same shared scanning engine. The CLI does not depend on it, and the web interface does not modify the CLI.
 
 Install (if you haven't already):
-```
-   python -m pip install -e ".[web]"
-```
 
-Run the development server from the repository root:
-```
-   python -m flask --app phrase_scanner_app.web:create_app run
-```
+   python3 -m venv .venv
+   .venv/bin/python -m pip install -e ".[web]"
 
-Then open http://127.0.0.1:5000 (Flask's default). The server binds to localhost by default; it is for **local development use only** and has no authentication — do not expose it to a network.
+macOS does not ship a `python` command (only `python3`), and the project's dependencies live in the venv — so either invoke the venv's Python directly:
+
+   .venv/bin/python -m flask --app phrase_scanner_app.web:create_app run --port 5001
+
+or activate the venv once per shell (`source .venv/bin/activate`) and then run:
+
+   python -m flask --app phrase_scanner_app.web:create_app run --port 5001
+
+Then open http://127.0.0.1:5001. (Flask's default port 5000 is better specified explicitly on macOS, because the AirPlay Receiver listens on 5000.)
+
+The server binds to localhost by default; it is for **local development use only** and has no authentication — do not expose it to a network.
 
 Features: paste URLs and phrases (with optional crawl limits), a Stop button that keeps partial results, a results view split into **Found** (pages where ≥1 phrase matched) and **Scanned** (pages scanned with no matches, including pages that failed or were blocked by robots.txt), sortable columns, per-phrase counts, per-table filtering, CSV/JSON downloads (client-side), and an elapsed-time indicator during scans.
+
+<img src="docs/images/web-scan-form.png" alt="New scan form" width="400">
+The new-scan form: targets and phrases on one screen, limits tucked away under "Advanced limits".
+
+<img src="docs/images/results-found-scanned.png" alt="Found and Scanned result tables" width="400">
+A completed scan: stat cards up top, pages with ≥1 match under **Found** (with per-phrase counts like `example domain:1`), everything else under **Scanned** — including failed pages and pages blocked by robots.txt, reported with the reason.
 
 Scans run synchronously — large or deep crawls can take many minutes and may time out the browser request. Use the CLI for very large jobs.
 
@@ -193,17 +204,17 @@ General guidance: lower MAX_CRAWL_DEPTH first if you just want to check top-leve
 
 Install development tools (web interface + test/build tooling):
 ```
-   python -m pip install -e ".[web,dev]"
+   python3 -m pip install -e ".[web,dev]"
 ```
 
 Run tests (network access is mocked; no live crawling is performed):
 ```
-   python -m pytest
+   python3 -m pytest
 ```
 
 Verify packaging (wheel builds with templates/static included):
 ```
-   python -m build
+   python3 -m build
 ```
 
 ## Output Format
